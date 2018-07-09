@@ -1,8 +1,8 @@
 pragma solidity ^0.4.22;
 
+import "./external/zeroex/2.0.0/utils/LibBytes/LibBytes.sol";
 import "./external/IValidator.sol";
 import "./external/chronos/ScheduledTransaction.sol";
-import "./external/zeroex/2.0.0/utils/LibBytes/LibBytes.sol";
 
 contract ChronosValidator is IValidator {
 
@@ -11,23 +11,28 @@ contract ChronosValidator is IValidator {
     /// @param signerAddress Address that should have signed the given hash.
     /// @param signature Proof of signing.
     /// @return Validity of order signature.
-    function isValidSignature (
+    function isValidSignature(
         bytes32 hash,
         address signerAddress,
         bytes signature
-    ) public {
-        address scheduledTxAddress = signature.popLast20Bytes();
+    )
+        external
+        view
+        returns (bool isValid)
+    {
+        address scheduledTxAddress = LibBytes.popLast20Bytes(signature);
 
         ScheduledTransaction scheduledTx = ScheduledTransaction(scheduledTxAddress);
 
-        bool canExecute = scheduledTx.canExecute();
+        bytes memory _serializedTransaction  = hex"600034603b57602f80600f833981f36000368180378080368173bebebebebebebebebebebebebebebebebebebebe5af415602c573d81803e3d81f35b80fd";
+        bool canExecute = scheduledTx.canExecute(_serializedTransaction);
 
-        bool isValid = canExecute;
+        isValid = canExecute;
 
         if (isValid) {
             uint8 v = uint8(signature[0]);
-            bytes32 r = signature.readBytes32(1);
-            bytes32 s = signature.readBytes32(33);
+            bytes32 r = LibBytes.readBytes32(signature, 1);
+            bytes32 s = LibBytes.readBytes32(signature, 33);
 
             address recovered = ecrecover(
                 keccak256(abi.encodePacked(
@@ -40,7 +45,9 @@ contract ChronosValidator is IValidator {
             );
 
             // Ownable(scheduledTx.owner) is ProxyWallet
-            isValid = Ownable(scheduledTx.owner).owner == recovered;
+            address secondOwner;
+            (secondOwner) = Ownable(scheduledTx.owner()).owner();
+            isValid = secondOwner == recovered;
         }
 
         return isValid;

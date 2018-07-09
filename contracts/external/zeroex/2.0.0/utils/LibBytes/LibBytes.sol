@@ -38,7 +38,7 @@ library LibBytes {
         }
         return memoryAddress;
     }
-    
+
     /// @dev Gets the memory address for the contents of a byte array.
     /// @param input Byte array to lookup.
     /// @return memoryAddress Memory address of the contents of the byte array.
@@ -121,7 +121,7 @@ library LibBytes {
                         source := add(source, 32)
                         dest := add(dest, 32)
                     }
-                    
+
                     // Write the last 32 bytes
                     mstore(dEnd, last)
                 }
@@ -152,7 +152,7 @@ library LibBytes {
                         sEnd := sub(sEnd, 32)
                         dEnd := sub(dEnd, 32)
                     }
-                    
+
                     // Write the first 32 bytes
                     mstore(dest, first)
                 }
@@ -182,7 +182,7 @@ library LibBytes {
             to < b.length,
             "TO_LESS_THAN_LENGTH_REQUIRED"
         );
-        
+
         // Create a new bytes structure and copy contents
         result = new bytes(to - from);
         memCopy(
@@ -191,7 +191,7 @@ library LibBytes {
             result.length);
         return result;
     }
-    
+
     /// @dev Returns a slice from a byte array without preserving the input.
     /// @param b The byte array to take a slice from. Will be destroyed in the process.
     /// @param from The starting index for the slice (inclusive).
@@ -215,7 +215,7 @@ library LibBytes {
             to < b.length,
             "TO_LESS_THAN_LENGTH_REQUIRED"
         );
-        
+
         // Create a new bytes structure around [from, to) in-place.
         assembly {
             result := add(b, from)
@@ -358,7 +358,7 @@ library LibBytes {
                 mload(add(b, index)),
                 0xffffffffffffffffffffffff0000000000000000000000000000000000000000
             )
-            
+
             // Make sure input address is clean.
             // (Solidity does not guarantee this)
             input := and(input, 0xffffffffffffffffffffffffffffffffffffffff)
@@ -499,7 +499,7 @@ library LibBytes {
             b.length >= index + nestedBytesLength,
             "GREATER_OR_EQUAL_TO_NESTED_BYTES_LENGTH_REQUIRED"
         );
-        
+
         // Return a pointer to the byte array as it exists inside `b`
         assembly {
             result := add(b, index)
