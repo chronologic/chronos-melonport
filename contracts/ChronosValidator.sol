@@ -1,8 +1,8 @@
 pragma solidity ^0.4.22;
 
-import "./external/zeroex/2.0.0/utils/LibBytes/LibBytes.sol";
+import "./external/LibBytes.sol";
 import "./external/IValidator.sol";
-import "./external/chronos/ScheduledTransaction.sol";
+import "./external/IScheduledTransaction.sol";
 
 contract ChronosValidator {
 
@@ -23,7 +23,7 @@ contract ChronosValidator {
 
         scheduledTxAddress = LibBytes.readAddress(signature, 0x00);
 
-        ScheduledTransaction scheduledTx = ScheduledTransaction(scheduledTxAddress);
+        IScheduledTransaction scheduledTx = IScheduledTransaction(scheduledTxAddress);
 
         serializedTransaction = LibBytes.readBytesWithLength(signature, 0x14);
         bool canExecute = scheduledTx.canExecute(serializedTransaction);
