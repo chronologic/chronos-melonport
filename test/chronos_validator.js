@@ -48,6 +48,11 @@ const UINT256_0  = '000000000000000000000000000000000000000000000000000000000000
 
 const SERIALIZED_TX_DATA = '600034603b57602f80600f833981f36000368180378080368173bebebebebebebebebebebebebebebebebebebebe5af415602c573d81803e3d81f35b80fd';
 
+// function hashPersonalMessage(message) {
+//   var prefix = ethUtil.toBuffer('\x19Ethereum Signed Message:\n' + message.length.toString());
+//   return ethUtil.keccak(Buffer.concat([message]));
+// }
+
 function getBytesLengthFromHexString(hexString) {
   // one hex encodes half of byte
   return stripHexPrefix(hexString).length / 2;
@@ -76,15 +81,14 @@ contract('ChronosValidator', function(accounts) {
 
     const scheduledTransaction = await ScheduledTransactionMock.new(SCHEDULED_TRANSACTION_CAN_EXECUTE);
 
-    // const expectedOrderHash = '0x434c6b41e2fb6dfcfe1b45c4492fb03700798e9c1afc6f801ba6203f948c1fa7';
-
-    // const orderHashWithEthSignPrefixHex = expectedOrderHash;//'ETH_SIGN{xyz:w}';
-    // let orderHashWithEthSignPrefixBuffer = ethUtil.toBuffer(orderHashWithEthSignPrefixHex);
-    const signerAddress = accounts[0];
+    const signerAddress = '0x627306090abab3a6e1400e9345bc60c78a8bef57';
 
     const signerPrivateKey = ethUtil.toBuffer(TEST_PRIVATE_KEY);
 
-    const ecSignature = ethUtil.ecsign(ethUtil.sha3(scheduledTransaction.address), signerPrivateKey);
+    const ecSignature = ethUtil.ecsign(
+      ethUtil.sha3(scheduledTransaction.address),
+      signerPrivateKey
+    );
 
     // Create 0x signature from EthSign signature
     let signedScheduledTxAddress = stripHexPrefix(ethUtil.bufferToHex(Buffer.concat([
@@ -95,8 +99,6 @@ contract('ChronosValidator', function(accounts) {
 
     console.log('signed', signedScheduledTxAddress);
 
-    // orderHashWithEthSignPrefixBuffer = orderHashWithEthSignPrefixBuffer.toString();
-
     const serializedScheduledTxDataByteLength = getBytesLengthFromHexString(SERIALIZED_TX_DATA);
 
     const serializedLength = stripHexPrefix(ethUtil.bufferToHex(abi.rawEncode([ 'uint256' ], [ serializedScheduledTxDataByteLength ])));
@@ -105,22 +107,21 @@ contract('ChronosValidator', function(accounts) {
       + signedScheduledTxAddress;
 
     console.log({
-      // orderHashWithEthSignPrefixBuffer,
       signerAddress,
       signature
     });
 
     const [isValid, returnedScheduledTxAddress, returnedSerializedScheduledTxData,
       returnedSerializedTransactionLength,
-      signed
+      signed,
+      recovered
     ] = await chronosValidator.isValidSignature.call(1, signerAddress, signature);
-
-    console.log('data ss', returnedSerializedScheduledTxData);
 
     assert.isTrue(isValid);
     assert.strictEqual(returnedScheduledTxAddress, scheduledTransaction.address);
     assert.strictEqual(returnedSerializedTransactionLength.toNumber(), serializedScheduledTxDataByteLength);
     assert.strictEqual(stripHexPrefix(returnedSerializedScheduledTxData), SERIALIZED_TX_DATA);
     assert.strictEqual(stripHexPrefix(signed), signedScheduledTxAddress);
+    assert.strictEqual(recovered, signerAddress);
   });
 });

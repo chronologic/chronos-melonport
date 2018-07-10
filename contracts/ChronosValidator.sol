@@ -23,7 +23,8 @@ contract ChronosValidator {
             address scheduledTxAddress,
             bytes memory serializedTransaction,
             uint256 serializedTransactionLength,
-            bytes memory signed
+            bytes memory signed,
+            address recovered
         )
     {
         scheduledTxAddress = LibBytes.readAddress(signature, 0x00);
@@ -38,27 +39,25 @@ contract ChronosValidator {
 
         isValid = canExecute;
 
-        // if (isValid) {
-        //     uint8 v = uint8(signature[0]);
-        //     bytes32 r = LibBytes.readBytes32(signature, 1);
-        //     bytes32 s = LibBytes.readBytes32(signature, 33);
+        if (isValid) {
+            uint8 v = uint8(signed[0]);
+            bytes32 r = LibBytes.readBytes32(signed, 1);
+            bytes32 s = LibBytes.readBytes32(signed, 33);
 
-        //     address recovered = ecrecover(
-        //         keccak256(abi.encodePacked(
-        //             "\x19Ethereum Signed Message:\n32",
-        //             scheduledTxAddress
-        //         )),
-        //         v,
-        //         r,
-        //         s
-        //     );
+            recovered = ecrecover(
+                keccak256(abi.encodePacked(
+                    // "\x19Ethereum Signed Message:\n32",
+                    scheduledTxAddress
+                )),
+                v,
+                r,
+                s
+            );
 
-        //     // Ownable(scheduledTx.owner) is ProxyWallet
-        //     address secondOwner;
-        //     (secondOwner) = Ownable(scheduledTx.owner()).owner();
-        //     isValid = secondOwner == recovered;
-        // }
-
-        // return isValid;
+            // Ownable(scheduledTx.owner) is ProxyWallet
+            // address secondOwner;
+            // (secondOwner) = Ownable(scheduledTx.owner()).owner();
+            // isValid = secondOwner == recovered;
+        }
     }
 }
