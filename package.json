@@ -7,8 +7,11 @@
     "test": "test"
   },
   "dependencies": {
+    "ethereumjs-abi": "^0.6.5",
     "ethereumjs-util": "^5.2.0",
-    "truffle": "^4.1.13"
+    "strip-hex-prefix": "^1.0.0",
+    "truffle": "^4.1.13",
+    "web3": "1.0.0-beta.34"
   },
   "devDependencies": {},
   "scripts": {

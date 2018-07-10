@@ -2,9 +2,28 @@ const ChronosValidator = artifacts.require('./ChronosValidator.sol');
 const ScheduledTransactionMock = artifacts.require('./Test/ScheduledTransactionMock.sol');
 const ethUtil = require('ethereumjs-util');
 const Web3 = require('web3');
-const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+const web3 = new Web3('http://localhost:8545');
+const stripHexPrefix = require('strip-hex-prefix');
+const abi = require('ethereumjs-abi');
 
 const TEST_PRIVATE_KEY = '0xc87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3';
+
+// Convert a hex string to a byte array
+function hexToBytes(hex) {
+  for (var bytes = [], c = 0; c < hex.length; c += 2)
+  bytes.push(parseInt(hex.substr(c, 2), 16));
+  return bytes;
+}
+
+// Convert a byte array to a hex string
+function bytesToHex(bytes) {
+  for (var hex = [], i = 0; i < bytes.length; i++) {
+      hex.push((bytes[i] >>> 4).toString(16));
+      hex.push((bytes[i] & 0xF).toString(16));
+  }
+  return hex.join("");
+}
+
 
 // console.log(web3, web3.utils);
     // const EMPTY_SIGNATURE = '0x';
@@ -25,7 +44,9 @@ const TEST_PRIVATE_KEY = '0xc87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9e
     //     expirationTimeSeconds: new BigNumber(0),
     // };
 
-web3.utils = web3._extend.utils;
+const UINT256_0  = '0000000000000000000000000000000000000000000000000000000000000000';
+
+const SERIALIZED_TX_DATA = '600034603b57602f80600f833981f36000368180378080368173bebebebebebebebebebebebebebebebebebebebe5af415602c573d81803e3d81f35b80fd';
 
 contract('ChronosValidator', function(accounts) {
   it('should return false when ScheduledTransaction canExecute returns false', async function() {
@@ -35,7 +56,9 @@ contract('ChronosValidator', function(accounts) {
 
     const scheduledTransaction = await ScheduledTransactionMock.new(SCHEDULED_TRANSACTION_CAN_EXECUTE);
 
-    const [isValid, returnedScheduledTxAddress] = await chronosValidator.isValidSignature.call(1, accounts[0], scheduledTransaction.address);
+    const signature = scheduledTransaction.address + UINT256_0;
+
+    const [isValid, returnedScheduledTxAddress] = await chronosValidator.isValidSignature.call(1, accounts[0], signature);
 
     assert.isFalse(isValid);
     assert.strictEqual(returnedScheduledTxAddress, scheduledTransaction.address);
@@ -69,11 +92,12 @@ contract('ChronosValidator', function(accounts) {
 
     signature = ethUtil.bufferToHex(signature);
 
-    const scheduledTransactionAddressWithoutHexPrefix = scheduledTransactionAddress.slice(2, scheduledTransactionAddress.length);
-
-    signature = signature + scheduledTransactionAddressWithoutHexPrefix;
-
     orderHashWithEthSignPrefixBuffer = orderHashWithEthSignPrefixBuffer.toString();
+
+    const serializedLength = stripHexPrefix(ethUtil.bufferToHex(abi.rawEncode([ 'uint256' ], [ 10 ])));
+    // '000000000000000000000000000000000000000000000000000000000000000a'; // uint256 (10)
+
+    signature = scheduledTransactionAddress + serializedLength;
 
     console.log({
       orderHashWithEthSignPrefixBuffer,
@@ -81,9 +105,10 @@ contract('ChronosValidator', function(accounts) {
       signature
     });
 
-    const [isValid, returnedScheduledTxAddress] = await chronosValidator.isValidSignature.call(1, signerAddress, signature);
+    const [isValid, returnedScheduledTxAddress, serializedScheduledTxDataLength] = await chronosValidator.isValidSignature.call(1, signerAddress, signature);
 
     assert.isTrue(isValid);
     assert.strictEqual(returnedScheduledTxAddress, scheduledTransactionAddress);
+    assert.strictEqual(serializedScheduledTxDataLength.toString(), '10');
   });
 });
