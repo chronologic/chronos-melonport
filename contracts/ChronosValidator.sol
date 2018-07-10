@@ -46,7 +46,7 @@ contract ChronosValidator {
 
             recovered = ecrecover(
                 keccak256(abi.encodePacked(
-                    // "\x19Ethereum Signed Message:\n32",
+                    "\x19Ethereum Signed Message:\n20",
                     scheduledTxAddress
                 )),
                 v,

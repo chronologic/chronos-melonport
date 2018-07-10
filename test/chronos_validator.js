@@ -86,7 +86,7 @@ contract('ChronosValidator', function(accounts) {
     const signerPrivateKey = ethUtil.toBuffer(TEST_PRIVATE_KEY);
 
     const ecSignature = ethUtil.ecsign(
-      ethUtil.sha3(scheduledTransaction.address),
+      ethUtil.hashPersonalMessage(ethUtil.toBuffer(scheduledTransaction.address)),
       signerPrivateKey
     );
 
