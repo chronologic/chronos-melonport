@@ -3,7 +3,10 @@ pragma solidity ^0.4.19;
 contract ScheduledTransactionMock {
     bool _canExecute;
 
-    constructor (bool _canExecuteParam) public {
+    address owner;
+
+    constructor (address _owner, bool _canExecuteParam) public {
+        owner = _owner;
         _canExecute = _canExecuteParam;
     }
 

@@ -1,4 +1,6 @@
 const ChronosValidator = artifacts.require('./ChronosValidator.sol');
+const SchedulerMock = artifacts.require('./Test/SchedulerMock.sol');
+const EventEmitter = artifacts.require('./external/chronos/EventEmitter.sol');
 const ScheduledTransactionMock = artifacts.require('./Test/ScheduledTransactionMock.sol');
 const ethUtil = require('ethereumjs-util');
 const Web3 = require('web3');
@@ -7,51 +9,20 @@ const stripHexPrefix = require('strip-hex-prefix');
 const abi = require('ethereumjs-abi');
 
 const TEST_PRIVATE_KEY = '0xc87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3';
+const TEST_ACCOUNT_ADDRESS = '0x627306090abab3a6e1400e9345bc60c78a8bef57';
 
-// Convert a hex string to a byte array
-function hexToBytes(hex) {
-  for (var bytes = [], c = 0; c < hex.length; c += 2)
-  bytes.push(parseInt(hex.substr(c, 2), 16));
-  return bytes;
+const Constants = {
+  NEWREQUESTLOG: '0x94c6f2d01cc82df9dceeabfd7786c57a01cd9796e7cab146d2d0cf5c8380310d'
+};
+
+const getTxRequestFromReceipt = (receipt) => {
+  const log = receipt.logs.find(log => log.topics[0] === Constants.NEWREQUESTLOG)
+  return "0x".concat(log.data.slice(26, 66));
 }
-
-// Convert a byte array to a hex string
-function bytesToHex(bytes) {
-  for (var hex = [], i = 0; i < bytes.length; i++) {
-      hex.push((bytes[i] >>> 4).toString(16));
-      hex.push((bytes[i] & 0xF).toString(16));
-  }
-  return hex.join("");
-}
-
-
-// console.log(web3, web3.utils);
-    // const EMPTY_SIGNATURE = '0x';
-    // const fakeExchangeContractAddress = '0x1dc4c1cefef38a777b15aa20260a54e584b16c48';
-    // const order = {
-    //     makerAddress: constants.NULL_ADDRESS,
-    //     takerAddress: constants.NULL_ADDRESS,
-    //     senderAddress: constants.NULL_ADDRESS,
-    //     feeRecipientAddress: constants.NULL_ADDRESS,
-    //     makerAssetData: constants.NULL_ADDRESS,
-    //     takerAssetData: constants.NULL_ADDRESS,
-    //     exchangeAddress: fakeExchangeContractAddress,
-    //     salt: new BigNumber(0),
-    //     makerFee: new BigNumber(0),
-    //     takerFee: new BigNumber(0),
-    //     makerAssetAmount: new BigNumber(0),
-    //     takerAssetAmount: new BigNumber(0),
-    //     expirationTimeSeconds: new BigNumber(0),
-    // };
 
 const UINT256_0  = '0000000000000000000000000000000000000000000000000000000000000000';
 
 const SERIALIZED_TX_DATA = '600034603b57602f80600f833981f36000368180378080368173bebebebebebebebebebebebebebebebebebebebe5af415602c573d81803e3d81f35b80fd';
-
-// function hashPersonalMessage(message) {
-//   var prefix = ethUtil.toBuffer('\x19Ethereum Signed Message:\n' + message.length.toString());
-//   return ethUtil.keccak(Buffer.concat([message]));
-// }
 
 function getBytesLengthFromHexString(hexString) {
   // one hex encodes half of byte
@@ -64,11 +35,11 @@ contract('ChronosValidator', function(accounts) {
 
     const SCHEDULED_TRANSACTION_CAN_EXECUTE = false;
 
-    const scheduledTransaction = await ScheduledTransactionMock.new(SCHEDULED_TRANSACTION_CAN_EXECUTE);
+    const scheduledTransaction = await ScheduledTransactionMock.new(TEST_ACCOUNT_ADDRESS, SCHEDULED_TRANSACTION_CAN_EXECUTE);
 
     const signature = scheduledTransaction.address + UINT256_0;
 
-    const [isValid, returnedScheduledTxAddress] = await chronosValidator.isValidSignature.call(1, accounts[0], signature);
+    const [isValid, returnedScheduledTxAddress] = await chronosValidator.isValidSignature.call(1, TEST_ACCOUNT_ADDRESS, signature);
 
     assert.isFalse(isValid);
     assert.strictEqual(returnedScheduledTxAddress, scheduledTransaction.address);
@@ -77,16 +48,20 @@ contract('ChronosValidator', function(accounts) {
   it('should return true when ScheduledTransaction canExecute returns true and transaction is in execution window', async function() {
     const chronosValidator = await ChronosValidator.deployed();
 
+    const signerAddress = TEST_ACCOUNT_ADDRESS;
+
     const SCHEDULED_TRANSACTION_CAN_EXECUTE = true;
 
-    const scheduledTransaction = await ScheduledTransactionMock.new(SCHEDULED_TRANSACTION_CAN_EXECUTE);
+    const eventEmitter = await EventEmitter.new();
+    const scheduler = await SchedulerMock.new(eventEmitter.address);
 
-    const signerAddress = '0x627306090abab3a6e1400e9345bc60c78a8bef57';
+    const scheduleTransactionTx = await scheduler.schedule('0x1');
+    const scheduledTransactionAddress = getTxRequestFromReceipt(scheduleTransactionTx.receipt)
 
     const signerPrivateKey = ethUtil.toBuffer(TEST_PRIVATE_KEY);
 
     const ecSignature = ethUtil.ecsign(
-      ethUtil.hashPersonalMessage(ethUtil.toBuffer(scheduledTransaction.address)),
+      ethUtil.hashPersonalMessage(ethUtil.toBuffer(scheduledTransactionAddress)),
       signerPrivateKey
     );
 
@@ -103,7 +78,7 @@ contract('ChronosValidator', function(accounts) {
 
     const serializedLength = stripHexPrefix(ethUtil.bufferToHex(abi.rawEncode([ 'uint256' ], [ serializedScheduledTxDataByteLength ])));
 
-    const signature = scheduledTransaction.address + serializedLength + SERIALIZED_TX_DATA
+    const signature = scheduledTransactionAddress + serializedLength + SERIALIZED_TX_DATA
       + signedScheduledTxAddress;
 
     console.log({
@@ -118,7 +93,7 @@ contract('ChronosValidator', function(accounts) {
     ] = await chronosValidator.isValidSignature.call(1, signerAddress, signature);
 
     assert.isTrue(isValid);
-    assert.strictEqual(returnedScheduledTxAddress, scheduledTransaction.address);
+    assert.strictEqual(returnedScheduledTxAddress, scheduledTransactionAddress);
     assert.strictEqual(returnedSerializedTransactionLength.toNumber(), serializedScheduledTxDataByteLength);
     assert.strictEqual(stripHexPrefix(returnedSerializedScheduledTxData), SERIALIZED_TX_DATA);
     assert.strictEqual(stripHexPrefix(signed), signedScheduledTxAddress);
