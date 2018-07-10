@@ -1,6 +1,7 @@
 const ChronosValidator = artifacts.require('./ChronosValidator.sol');
 const SchedulerMock = artifacts.require('./Test/SchedulerMock.sol');
 const EventEmitter = artifacts.require('./external/chronos/EventEmitter.sol');
+const ProxyWallet = artifacts.require('./ProxyWallet.sol');
 const ScheduledTransactionMock = artifacts.require('./Test/ScheduledTransactionMock.sol');
 const ethUtil = require('ethereumjs-util');
 const Web3 = require('web3');
@@ -55,7 +56,9 @@ contract('ChronosValidator', function(accounts) {
     const eventEmitter = await EventEmitter.new();
     const scheduler = await SchedulerMock.new(eventEmitter.address);
 
-    const scheduleTransactionTx = await scheduler.schedule('0x1');
+    const proxyWallet = await ProxyWallet.new(scheduler.address);
+
+    const scheduleTransactionTx = await proxyWallet.schedule('0x1');
     const scheduledTransactionAddress = getTxRequestFromReceipt(scheduleTransactionTx.receipt)
 
     const signerPrivateKey = ethUtil.toBuffer(TEST_PRIVATE_KEY);
