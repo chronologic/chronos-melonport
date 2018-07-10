@@ -51,8 +51,6 @@ contract('ChronosValidator', function(accounts) {
 
     const signerAddress = TEST_ACCOUNT_ADDRESS;
 
-    const SCHEDULED_TRANSACTION_CAN_EXECUTE = true;
-
     const eventEmitter = await EventEmitter.new();
     const scheduler = await SchedulerMock.new(eventEmitter.address);
 
@@ -89,17 +87,20 @@ contract('ChronosValidator', function(accounts) {
       signature
     });
 
-    const [isValid, returnedScheduledTxAddress, returnedSerializedScheduledTxData,
-      returnedSerializedTransactionLength,
+    const [
+      isValid,
+      returnedScheduledTxAddress,
+      returnedSerializedScheduledTxData,
       signed,
-      recovered
+      recovered,
+      secondOwner
     ] = await chronosValidator.isValidSignature.call(1, signerAddress, signature);
 
     assert.isTrue(isValid);
     assert.strictEqual(returnedScheduledTxAddress, scheduledTransactionAddress);
-    assert.strictEqual(returnedSerializedTransactionLength.toNumber(), serializedScheduledTxDataByteLength);
     assert.strictEqual(stripHexPrefix(returnedSerializedScheduledTxData), SERIALIZED_TX_DATA);
     assert.strictEqual(stripHexPrefix(signed), signedScheduledTxAddress);
     assert.strictEqual(recovered, signerAddress);
+    assert.strictEqual(secondOwner, signerAddress);
   });
 });

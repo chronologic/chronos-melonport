@@ -1,9 +1,9 @@
 pragma solidity ^0.4.19;
 
-contract ScheduledTransactionMock {
-    bool _canExecute;
+import "../external/chronologic/Ownable.sol";
 
-    address owner;
+contract ScheduledTransactionMock is Ownable {
+    bool _canExecute;
 
     constructor (address _owner, bool _canExecuteParam) public {
         owner = _owner;

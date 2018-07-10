@@ -1,12 +1,13 @@
 pragma solidity ^0.4.19;
 
 import "./external/IScheduler.sol";
+import "./external/chronologic/Ownable.sol";
 
-contract ProxyWallet {
+contract ProxyWallet is Ownable {
     mapping(address => bool) whitelist;
     IScheduler scheduler;
 
-    constructor(address _chronosScheduler) {
+    constructor(address _chronosScheduler) public {
         whitelist[msg.sender] = true;
         scheduler = IScheduler(_chronosScheduler);
     }
