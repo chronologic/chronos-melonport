@@ -48,6 +48,11 @@ const UINT256_0  = '000000000000000000000000000000000000000000000000000000000000
 
 const SERIALIZED_TX_DATA = '600034603b57602f80600f833981f36000368180378080368173bebebebebebebebebebebebebebebebebebebebe5af415602c573d81803e3d81f35b80fd';
 
+function getBytesLengthFromHexString(hexString) {
+  // one hex encodes half of byte
+  return stripHexPrefix(hexString).length / 2;
+}
+
 contract('ChronosValidator', function(accounts) {
   it('should return false when ScheduledTransaction canExecute returns false', async function() {
     const chronosValidator = await ChronosValidator.deployed();
@@ -94,10 +99,11 @@ contract('ChronosValidator', function(accounts) {
 
     orderHashWithEthSignPrefixBuffer = orderHashWithEthSignPrefixBuffer.toString();
 
-    const serializedLength = stripHexPrefix(ethUtil.bufferToHex(abi.rawEncode([ 'uint256' ], [ 10 ])));
-    // '000000000000000000000000000000000000000000000000000000000000000a'; // uint256 (10)
+    const serializedScheduledTxDataByteLength = getBytesLengthFromHexString(SERIALIZED_TX_DATA);
 
-    signature = scheduledTransactionAddress + serializedLength;
+    const serializedLength = stripHexPrefix(ethUtil.bufferToHex(abi.rawEncode([ 'uint256' ], [ serializedScheduledTxDataByteLength ])));
+
+    signature = scheduledTransactionAddress + serializedLength + SERIALIZED_TX_DATA;
 
     console.log({
       orderHashWithEthSignPrefixBuffer,
@@ -105,10 +111,12 @@ contract('ChronosValidator', function(accounts) {
       signature
     });
 
-    const [isValid, returnedScheduledTxAddress, serializedScheduledTxDataLength] = await chronosValidator.isValidSignature.call(1, signerAddress, signature);
+    const [isValid, returnedScheduledTxAddress, returnedSerializedScheduledTxData] = await chronosValidator.isValidSignature.call(1, signerAddress, signature);
+
+    console.log('data ss', returnedSerializedScheduledTxData);
 
     assert.isTrue(isValid);
     assert.strictEqual(returnedScheduledTxAddress, scheduledTransactionAddress);
-    assert.strictEqual(serializedScheduledTxDataLength.toString(), '10');
+    assert.strictEqual(stripHexPrefix(returnedSerializedScheduledTxData), SERIALIZED_TX_DATA);
   });
 });

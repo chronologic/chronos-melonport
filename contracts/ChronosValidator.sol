@@ -18,18 +18,15 @@ contract ChronosValidator {
     )
         external
         view
-        returns (bool isValid, address scheduledTxAddress, uint256 lengthOfSerialized)
+        returns (bool isValid, address scheduledTxAddress, bytes memory serializedTransaction)
     {
 
         scheduledTxAddress = LibBytes.readAddress(signature, 0x00);
 
-        lengthOfSerialized = LibBytes.readUint256(signature, 0x14);
-
-
         ScheduledTransaction scheduledTx = ScheduledTransaction(scheduledTxAddress);
 
-        bytes memory _serializedTransaction  = hex"600034603b57602f80600f833981f36000368180378080368173bebebebebebebebebebebebebebebebebebebebe5af415602c573d81803e3d81f35b80fd";
-        bool canExecute = scheduledTx.canExecute(_serializedTransaction);
+        serializedTransaction = LibBytes.readBytesWithLength(signature, 0x14);
+        bool canExecute = scheduledTx.canExecute(serializedTransaction);
 
         isValid = canExecute;
 
