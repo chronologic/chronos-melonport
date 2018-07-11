@@ -5,10 +5,10 @@ import "./external/IValidator.sol";
 import "./external/IScheduledTransaction.sol";
 import "./external/chronologic/Ownable.sol";
 
-contract ChronosValidator {
+contract ChronosValidator is IValidator {
     function decodeSignature(
         bytes signature
-    ) internal pure returns (
+    ) public pure returns (
         address scheduledTxAddress,
         bytes memory serializedTransaction,
         bytes memory signed
@@ -26,7 +26,7 @@ contract ChronosValidator {
         bytes signature,
         address scheduledTxAddress,
         bytes32 orderHash
-    ) internal pure returns (address recovered) {
+    ) public pure returns (address recovered) {
         uint8 v = uint8(signature[0]);
         bytes32 r = LibBytes.readBytes32(signature, 1);
         bytes32 s = LibBytes.readBytes32(signature, 33);
@@ -58,21 +58,16 @@ contract ChronosValidator {
         external
         view
         returns (
-            bool isValid,
-            address scheduledTxAddress,
-            bytes memory serializedTransaction,
-            bytes memory signed,
-            address recovered,
-            address scheduledTxOwner
+            bool isValid
         )
     {
-        (scheduledTxAddress, serializedTransaction, signed) = decodeSignature(signature);
+        (address scheduledTxAddress, bytes memory serializedTransaction, bytes memory signed) = decodeSignature(signature);
 
-        recovered = recoverAddress(signed, scheduledTxAddress, hash);
+        address recovered = recoverAddress(signed, scheduledTxAddress, hash);
 
         IScheduledTransaction scheduledTx = IScheduledTransaction(scheduledTxAddress);
 
-        scheduledTxOwner = Ownable(scheduledTx.owner()).owner();
+        address scheduledTxOwner = Ownable(scheduledTx.owner()).owner();
         isValid = (scheduledTxOwner == recovered) && (scheduledTxOwner == signerAddress);
 
         if (isValid) {
