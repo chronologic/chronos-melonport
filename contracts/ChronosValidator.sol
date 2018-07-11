@@ -24,7 +24,8 @@ contract ChronosValidator {
 
     function recoverAddress(
         bytes signature,
-        address scheduledTxAddress
+        address scheduledTxAddress,
+        bytes32 orderHash
     ) internal pure returns (address recovered) {
         uint8 v = uint8(signature[0]);
         bytes32 r = LibBytes.readBytes32(signature, 1);
@@ -33,8 +34,9 @@ contract ChronosValidator {
         recovered = ecrecover(
             keccak256(
                 abi.encodePacked(
-                    "\x19Ethereum Signed Message:\n20",
-                    scheduledTxAddress
+                    "\x19Ethereum Signed Message:\n52",
+                    scheduledTxAddress,
+                    orderHash
                 )
             ),
             v,
@@ -66,7 +68,7 @@ contract ChronosValidator {
     {
         (scheduledTxAddress, serializedTransaction, signed) = decodeSignature(signature);
 
-        recovered = recoverAddress(signed, scheduledTxAddress);
+        recovered = recoverAddress(signed, scheduledTxAddress, hash);
 
         IScheduledTransaction scheduledTx = IScheduledTransaction(scheduledTxAddress);
 
