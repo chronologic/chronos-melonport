@@ -8,7 +8,7 @@ import "./external/chronologic/Ownable.sol";
 contract ChronosValidator {
     function decodeSignature(
         bytes signature
-    ) public pure returns (
+    ) internal pure returns (
         address scheduledTxAddress,
         bytes memory serializedTransaction,
         bytes memory signed
@@ -20,12 +20,28 @@ contract ChronosValidator {
         serializedTransaction = LibBytes.slice(signature, 0x34, 0x34 + serializedTransactionLength);
 
         signed = LibBytes.slice(signature, 0x34 + serializedTransactionLength, signature.length);
-
     }
 
-    // function checkCanExecute(address scheduledTxAddress) public view returns (bool canExecute) {
+    function recoverAddress(
+        bytes signature,
+        address scheduledTxAddress
+    ) internal pure returns (address recovered) {
+        uint8 v = uint8(signature[0]);
+        bytes32 r = LibBytes.readBytes32(signature, 1);
+        bytes32 s = LibBytes.readBytes32(signature, 33);
 
-    // }
+        recovered = ecrecover(
+            keccak256(
+                abi.encodePacked(
+                    "\x19Ethereum Signed Message:\n20",
+                    scheduledTxAddress
+                )
+            ),
+            v,
+            r,
+            s
+        );
+    }
 
     /// @dev Verifies that a signature is valid.
     /// @param hash Message hash that is signed.
@@ -50,31 +66,15 @@ contract ChronosValidator {
     {
         (scheduledTxAddress, serializedTransaction, signed) = decodeSignature(signature);
 
+        recovered = recoverAddress(signed, scheduledTxAddress);
+
         IScheduledTransaction scheduledTx = IScheduledTransaction(scheduledTxAddress);
 
-        bool canExecute = scheduledTx.canExecute(serializedTransaction);
-
-        isValid = canExecute;
+        scheduledTxOwner = Ownable(scheduledTx.owner()).owner();
+        isValid = (scheduledTxOwner == recovered) && (scheduledTxOwner == signerAddress);
 
         if (isValid) {
-            uint8 v = uint8(signed[0]);
-            bytes32 r = LibBytes.readBytes32(signed, 1);
-            bytes32 s = LibBytes.readBytes32(signed, 33);
-
-            recovered = ecrecover(
-                keccak256(
-                    abi.encodePacked(
-                        "\x19Ethereum Signed Message:\n20",
-                        scheduledTxAddress
-                    )
-                ),
-                v,
-                r,
-                s
-            );
-
-            scheduledTxOwner = Ownable(scheduledTx.owner()).owner();
-            isValid = (scheduledTxOwner == recovered) && (scheduledTxOwner == signerAddress);
+            isValid = scheduledTx.canExecute(serializedTransaction);
         }
     }
 }

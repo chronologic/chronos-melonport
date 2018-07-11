@@ -34,16 +34,41 @@ contract('ChronosValidator', function(accounts) {
   it('should return false when ScheduledTransaction canExecute returns false', async function() {
     const chronosValidator = await ChronosValidator.deployed();
 
-    const SCHEDULED_TRANSACTION_CAN_EXECUTE = false;
+    const signerAddress = TEST_ACCOUNT_ADDRESS;
 
-    const scheduledTransaction = await ScheduledTransactionMock.new(TEST_ACCOUNT_ADDRESS, SCHEDULED_TRANSACTION_CAN_EXECUTE);
+    const eventEmitter = await EventEmitter.new();
+    const scheduler = await SchedulerMock.new(eventEmitter.address);
 
-    const signature = scheduledTransaction.address + UINT256_0;
+    const proxyWallet = await ProxyWallet.new(scheduler.address);
 
-    const [isValid, returnedScheduledTxAddress] = await chronosValidator.isValidSignature.call(1, TEST_ACCOUNT_ADDRESS, signature);
+    const scheduleTransactionTx = await proxyWallet.schedule('0x00');
+    const scheduledTransactionAddress = getTxRequestFromReceipt(scheduleTransactionTx.receipt)
+
+    const signerPrivateKey = ethUtil.toBuffer(TEST_PRIVATE_KEY);
+
+    const ecSignature = ethUtil.ecsign(
+      ethUtil.hashPersonalMessage(ethUtil.toBuffer(scheduledTransactionAddress)),
+      signerPrivateKey
+    );
+
+    // Create 0x signature from EthSign signature
+    let signedScheduledTxAddress = stripHexPrefix(ethUtil.bufferToHex(Buffer.concat([
+        ethUtil.toBuffer(ecSignature.v),
+        ecSignature.r,
+        ecSignature.s
+    ])));
+
+    const serializedScheduledTxDataByteLength = getBytesLengthFromHexString(SERIALIZED_TX_DATA);
+
+    const serializedLength = stripHexPrefix(ethUtil.bufferToHex(abi.rawEncode([ 'uint256' ], [ serializedScheduledTxDataByteLength ])));
+
+    const signature = scheduledTransactionAddress + serializedLength + SERIALIZED_TX_DATA
+      + signedScheduledTxAddress;
+
+    const [isValid, returnedScheduledTxAddress] = await chronosValidator.isValidSignature.call(1, signerAddress, signature);
 
     assert.isFalse(isValid);
-    assert.strictEqual(returnedScheduledTxAddress, scheduledTransaction.address);
+    assert.strictEqual(returnedScheduledTxAddress, scheduledTransactionAddress);
   });
 
   it('should return true when ScheduledTransaction canExecute returns true and transaction is in execution window', async function() {
@@ -56,7 +81,7 @@ contract('ChronosValidator', function(accounts) {
 
     const proxyWallet = await ProxyWallet.new(scheduler.address);
 
-    const scheduleTransactionTx = await proxyWallet.schedule('0x1');
+    const scheduleTransactionTx = await proxyWallet.schedule('0x01');
     const scheduledTransactionAddress = getTxRequestFromReceipt(scheduleTransactionTx.receipt)
 
     const signerPrivateKey = ethUtil.toBuffer(TEST_PRIVATE_KEY);
