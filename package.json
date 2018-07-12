@@ -14,8 +14,7 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "mocha",
-    "truffle-test": "truffle test"
+    "test": "truffle test"
   },
   "repository": {
     "type": "git",
